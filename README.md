@@ -6,7 +6,7 @@
 ### to run
 * `pipenv shell`
 * `pipenv install`
-* apply google api credentials, same them to credentials.json
+* apply google api credentials, same them to `credentials.json`
 * `pipenv run test_eventbrite_api.py`
 * grant app permissions to manage the google calenders
 * done
