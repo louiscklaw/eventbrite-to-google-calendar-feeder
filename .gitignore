@@ -1,4 +1,7 @@
 #
+credentials.json
+token.json
+
 .vscode
 Pipfile.lock
 .env

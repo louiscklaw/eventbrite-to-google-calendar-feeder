@@ -8,10 +8,13 @@ from pprint import pprint
 from unittest.mock import MagicMock, patch
 import datetime
 import json
+from collections import OrderedDict
+
 
 # target import
 # from operate_eventbrite import *
 import operate_eventbrite
+from operate_google_calendar import *
 
 
 # create shortcut less confusing
@@ -32,10 +35,18 @@ TEST_CALENDAR = 'test_calendar_list'
 HTTPS_TEST_SERVER=os.getenv('HTTPBIN_SERVER')
 STUB_GET_REQUESTS = '/'.join([HTTPS_TEST_SERVER,'get'])
 
+# SETTING FOR GOOGLE CALENDAR
+# settings file, credential file, token files
+CALENDAR_SCOPES = 'https://www.googleapis.com/auth/calendar'
+CWD = os.path.dirname(os.path.abspath(__file__))
+TOKEN_JSON_PATH = os.path.join(CWD,'token.json')
+CREDENTIAL_JSON_PATH = os.path.join(CWD,'credential.json')
+TEST_CALENDAR = 'test_calendar_list'
+
 # TEST SETTING
 EVENT_BRITE_TEST_TOKEN=os.getenv('EVENT_BRITE_TEST_TOKEN')
 EVENT_LOCATION='hong kong'
-
+EVENT_BRITE_SEARCH_WORD='RICS Tai Kwun Symposium'
 
 
 def setUpModule():
@@ -74,28 +85,57 @@ class TestEventBriteApi(unittest.TestCase):
             self.assertIn(k,returned_arg.keys(), 'the wanted parameters not returning')
             self.assertIn(v, returned_arg[k],'the wanted values not returning')
 
+    def test_make_get_call_search(self, search_word="Hong Kong"):
+        self.test_make_get_call({'q':search_word})
+
     def test_extract_user_request(self):
-        test_call=operate_eventbrite.event_brite_ETL_helper(EVENT_BRITE_TEST_TOKEN)
+        test_call=operate_eventbrite.event_brite_helper(EVENT_BRITE_TEST_TOKEN)
         user = test_call.get_user()
-        pprint(user.text)
+
 
     def test_extract_events_by_date(self):
         # sample calling
-        test_call=operate_eventbrite.event_brite_ETL_helper(EVENT_BRITE_TEST_TOKEN)
+        test_call=operate_eventbrite.event_brite_helper(EVENT_BRITE_TEST_TOKEN)
         call_result = test_call.extract_events_by_date( TODAY,TODAY_AND_1)
 
-    def test_load_events_by_date(self):
+
+    def test_load_events_by_date(self, start_date=TODAY, end_date=TODAY_AND_1):
         EXPECTED_COMPONENTS = ['created', 'description']
-        test_call=operate_eventbrite.event_brite_ETL_helper(EVENT_BRITE_TEST_TOKEN)
-        call_result = test_call.load_events_by_date( TODAY,TODAY_AND_1)
+        test_call=operate_eventbrite.event_brite_helper(EVENT_BRITE_TEST_TOKEN)
+        call_result = test_call.load_events_by_date( start_date,end_date)
 
-        check_event_0 = call_result['events'][0]
-        for component in EXPECTED_COMPONENTS:
-            self.assertIn(component,check_event_0.keys(), ' the %s date not found' % component)
+        check_event_0 = call_result[0]
+        self.assertNotEqual('',check_event_0.name)
+
+        return call_result
+
+    def test_extract_event_by_search(self):
+        test_call=operate_eventbrite.event_brite_helper(EVENT_BRITE_TEST_TOKEN)
+        call_result = test_call.extract_event_by_search('Hong Kong')
 
 
+    def test_load_events_by_search(self, search_word='Hong Kong'):
+        test_call=operate_eventbrite.event_brite_helper(EVENT_BRITE_TEST_TOKEN)
+        call_result = test_call.load_events_by_search(search_word)
 
+        check_event_0 = call_result[0]
+        self.assertNotEqual('',check_event_0.name)
 
+        return call_result
+
+    def test_insert_into_google_calendar_from_eventbrite(self, target_calendar_name=TEST_CALENDAR, event_brite_search_word=EVENT_BRITE_SEARCH_WORD):
+        # for example , today as start date , tomorrow as stop day
+        events_from_eventbrite = self.test_load_events_by_search(event_brite_search_word)
+
+        google_service = google_calendar_helper(TOKEN_JSON_PATH, CREDENTIAL_JSON_PATH, CALENDAR_SCOPES)
+
+        for event in events_from_eventbrite[0:1]:
+            try:
+                print('inserting events')
+                google_service.insert_event_into_calendar(target_calendar_name, events_from_eventbrite[0].get_google_cal_event_json())
+
+            except Exception as e:
+                raise e
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
