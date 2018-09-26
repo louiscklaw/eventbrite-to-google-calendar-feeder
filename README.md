@@ -15,4 +15,4 @@
 * currently in the progress
 
 ### related pics
-![alt text](http://url/to/img.png)
+![screencapture](https://raw.githubusercontent.com/louiscklaw/eventbrite-to-google-calendar-feeder/master/event_brite_to_google_calendar.png)
